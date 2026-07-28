@@ -1,0 +1,11 @@
+torch
+transformers
+trl
+unsloth
+peft
+bitsandbytes
+pandas
+pillow
+scikit-learn
+tqdm
+qwen-vl-utils
