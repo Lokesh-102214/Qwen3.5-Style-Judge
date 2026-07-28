@@ -10,7 +10,7 @@ The fine-tuned LoRA adapters are hosted on HuggingFace:
 
 1. **Clone the repository:**
    ```bash
-   git clone <repo_url>
+   git clone https://github.com/Lokesh-102214/Qwen3.5-Style-Judge.git
    cd qwen-style-judge
    ```
 
