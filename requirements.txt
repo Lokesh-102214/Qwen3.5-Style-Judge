@@ -9,3 +9,6 @@ pillow
 scikit-learn
 tqdm
 qwen-vl-utils
+
+huggingface_hub
+safetensors
