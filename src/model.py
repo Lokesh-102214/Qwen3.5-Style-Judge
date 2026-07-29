@@ -42,6 +42,13 @@ def fix_adapter_keys(adapter_path: str, fixed_dir: str = "fixed_adapter"):
     return fixed_dir
 
 def load_vision_model(base_model_name: str, adapter_path: str = None, load_in_4bit: bool = False):
+    if base_model_name.startswith("kaggle:"):
+        import kagglehub
+        handle = base_model_name.split("kaggle:")[1]
+        print(f"[MODEL] Downloading Base Model from Kaggle: {handle} …")
+        base_model_name = kagglehub.model_download(handle)
+        print(f"[MODEL] Kaggle Model downloaded to: {base_model_name}")
+
     print(f"[MODEL] Loading Base Model: {base_model_name} …")
     model, tokenizer = FastVisionModel.from_pretrained(
         model_name=base_model_name,

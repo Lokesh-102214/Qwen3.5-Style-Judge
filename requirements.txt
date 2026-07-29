@@ -12,3 +12,5 @@ qwen-vl-utils
 
 huggingface_hub
 safetensors
+
+kagglehub

@@ -47,6 +47,6 @@ IMAGE_SIZE = 1024
 MAX_SEQ_LEN = 8196
 MAX_NEW_TOKENS = 2048
 
-# We use the HF repo provided by the user
-DEFAULT_BASE_MODEL = "Qwen/Qwen3.5-VL-0.8B-Instruct"  
+# We use the Kaggle base model provided by the user
+DEFAULT_BASE_MODEL = "kaggle:barnobarno/qwen3.5-0.8b/transformers/unsloth/1"
 DEFAULT_ADAPTER = "GamerQuant/Qwen3.5_0.8b_10kbalanced_k2_lora16"
