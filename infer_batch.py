@@ -45,7 +45,7 @@ def main():
                 ex_a_src, ex_a_dst, ex_b_src, ex_b_dst, q_src, q_res, style_desc
             )
             
-            raw_output = run_inference(model, tokenizer, user_content)
+            raw_output, perf = run_inference(model, tokenizer, user_content, return_perf=True)
             metrics = extract_multi_metrics(raw_output)
             
             gt_score = int(row.get("final_score", 0)) if not pd.isna(row.get("final_score")) else None
@@ -58,6 +58,14 @@ def main():
                 "pred_cp": metrics["cp"],
                 "pred_rq": metrics["rq"],
                 "pred_final_score": metrics["final_scaled_score"],
+                "ttft_sec": perf["ttft_sec"],
+                "tpot_sec": perf["tpot_sec"],
+                "prefill_time_sec": perf["prefill_time_sec"],
+                "total_time_sec": perf["total_time_sec"],
+                "peak_vram_gb": perf["peak_vram_gb"],
+                "avg_gpu_utilization_pct": perf["avg_gpu_utilization_pct"],
+                "avg_power_consumption_w": perf["avg_power_consumption_w"],
+                "hardware_info": str(perf["hardware_info"]),
                 "raw_model_output": raw_output
             }
             predictions.append(pred_record)

@@ -36,7 +36,7 @@ def main():
     model, tokenizer = load_vision_model(args.base_model, args.adapter)
     
     print("\nRunning evaluation...")
-    raw_output = run_inference(model, tokenizer, user_content)
+    raw_output, perf = run_inference(model, tokenizer, user_content, return_perf=True)
     metrics = extract_multi_metrics(raw_output)
     
     print("\n" + "="*50)
@@ -46,6 +46,19 @@ def main():
     print(f"Content Preservation : {metrics['cp']}/10")
     print(f"Rendering Quality    : {metrics['rq']}/10")
     print(f"Final Scaled Score   : {metrics['final_scaled_score']}/10")
+    
+    print("\n" + "="*50)
+    print("PERFORMANCE METRICS")
+    print("="*50)
+    print(f"Time to First Token (TTFT) : {perf['ttft_sec']:.3f} s")
+    print(f"Time Per Output Token (TPOT) : {perf['tpot_sec']:.3f} s")
+    print(f"Prefill Time                 : {perf['prefill_time_sec']:.3f} s")
+    print(f"Total Inference Time         : {perf['total_time_sec']:.3f} s")
+    print(f"Peak VRAM Usage              : {perf['peak_vram_gb']:.2f} GB")
+    print(f"Avg GPU Utilization          : {perf['avg_gpu_utilization_pct']:.1f} %")
+    print(f"Avg Power Consumption        : {perf['avg_power_consumption_w']:.1f} W")
+    print(f"Hardware Info                : {perf['hardware_info']}")
+    
     print("\n[Raw Model Output]")
     print(raw_output)
 

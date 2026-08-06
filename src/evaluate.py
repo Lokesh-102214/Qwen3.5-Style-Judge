@@ -1,8 +1,84 @@
 import re
+import time
 import torch
+from threading import Thread, Event
 from typing import Dict
+from transformers import LogitsProcessorList, LogitsProcessor
 from qwen_vl_utils import process_vision_info
 from .config import SYSTEM_PROMPT, MAX_NEW_TOKENS
+
+try:
+    import pynvml
+    PYNVML_AVAILABLE = True
+except ImportError:
+    PYNVML_AVAILABLE = False
+
+class TimingLogitsProcessor(LogitsProcessor):
+    def __init__(self):
+        self.start_time = time.time()
+        self.first_token_time = None
+        self.token_times = []
+
+    def __call__(self, input_ids, scores):
+        current_time = time.time()
+        if self.first_token_time is None:
+            self.first_token_time = current_time
+        self.token_times.append(current_time)
+        return scores
+
+class GPUPerfMonitor:
+    def __init__(self):
+        self.stop_event = Event()
+        self.utils = []
+        self.powers = []
+        self.thread = None
+        if PYNVML_AVAILABLE:
+            try:
+                pynvml.nvmlInit()
+                self.handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            except Exception:
+                pass
+    
+    def _monitor(self):
+        while not self.stop_event.is_set():
+            if PYNVML_AVAILABLE and hasattr(self, 'handle'):
+                try:
+                    util = pynvml.nvmlDeviceGetUtilizationRates(self.handle).gpu
+                    power = pynvml.nvmlDeviceGetPowerUsage(self.handle) / 1000.0 # in Watts
+                    self.utils.append(util)
+                    self.powers.append(power)
+                except Exception:
+                    pass
+            time.sleep(0.01)
+
+    def start(self):
+        if PYNVML_AVAILABLE and hasattr(self, 'handle'):
+            self.stop_event.clear()
+            self.utils = []
+            self.powers = []
+            self.thread = Thread(target=self._monitor)
+            self.thread.start()
+
+    def stop(self):
+        avg_util, avg_power = 0, 0
+        if PYNVML_AVAILABLE and self.thread is not None:
+            self.stop_event.set()
+            self.thread.join()
+            if self.utils:
+                avg_util = sum(self.utils) / len(self.utils)
+            if self.powers:
+                avg_power = sum(self.powers) / len(self.powers)
+        return avg_util, avg_power
+
+def get_hardware_info():
+    info = {
+        "pytorch_version": torch.__version__,
+        "inference_engine": "transformers (unsloth)",
+        "gpu_name": "Unknown"
+    }
+    if torch.cuda.is_available():
+        info["gpu_name"] = torch.cuda.get_device_name(0)
+    return info
 
 def extract_multi_metrics(llm_output: str) -> Dict[str, any]:
     """Parse 3 integer scores from XML output and compute the final scaled score."""
@@ -26,7 +102,7 @@ def extract_multi_metrics(llm_output: str) -> Dict[str, any]:
         "raw_extraction": raw
     }
 
-def run_inference(model, tokenizer, user_content: list) -> str:
+def run_inference(model, tokenizer, user_content: list, return_perf: bool = False):
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user",   "content": user_content},
@@ -40,6 +116,15 @@ def run_inference(model, tokenizer, user_content: list) -> str:
         padding=True, return_tensors="pt"
     ).to(model.device)
 
+    timing_processor = TimingLogitsProcessor()
+    logits_processor = LogitsProcessorList([timing_processor])
+    gpu_monitor = GPUPerfMonitor()
+
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        
+    gpu_monitor.start()
+
     with torch.inference_mode():
         out_ids = model.generate(
             **inputs,
@@ -47,11 +132,47 @@ def run_inference(model, tokenizer, user_content: list) -> str:
             do_sample=False,
             eos_token_id=tokenizer.eos_token_id,
             pad_token_id=tokenizer.pad_token_id,
+            logits_processor=logits_processor
         )
+        
+    avg_gpu_util, avg_power = gpu_monitor.stop()
 
     raw_out = tokenizer.batch_decode(
         out_ids[:, inputs.input_ids.shape[1]:],
         skip_special_tokens=True
     )[0]
 
-    return raw_out
+    if not return_perf:
+        return raw_out
+
+    if torch.cuda.is_available():
+        peak_vram = torch.cuda.max_memory_allocated() / (1024**3) # GB
+    else:
+        peak_vram = 0
+
+    # Calculate timing metrics
+    total_time = time.time() - timing_processor.start_time
+    ttft = 0.0
+    tpot = 0.0
+    prefill_time = 0.0
+    
+    if timing_processor.first_token_time:
+        ttft = timing_processor.first_token_time - timing_processor.start_time
+        prefill_time = ttft # same as ttft
+        
+        num_tokens = len(timing_processor.token_times)
+        if num_tokens > 1:
+            tpot = (timing_processor.token_times[-1] - timing_processor.first_token_time) / (num_tokens - 1)
+
+    perf_metrics = {
+        "ttft_sec": ttft,
+        "tpot_sec": tpot,
+        "prefill_time_sec": prefill_time,
+        "total_time_sec": total_time,
+        "peak_vram_gb": peak_vram,
+        "avg_gpu_utilization_pct": avg_gpu_util,
+        "avg_power_consumption_w": avg_power,
+        "hardware_info": get_hardware_info()
+    }
+
+    return raw_out, perf_metrics
