@@ -25,14 +25,24 @@ except ImportError:
 if not hasattr(transformers, "auto_docstring"):
     transformers.auto_docstring = lambda *args, **kwargs: (lambda func: func)
 
-# 3. Patch missing HybridCache import in transformers v5
-if not hasattr(transformers, "HybridCache"):
-    try:
-        from transformers.cache_utils import HybridCache
-        transformers.HybridCache = HybridCache
-    except ImportError:
-        class DummyHybridCache: pass
-        transformers.HybridCache = DummyHybridCache
+# 3. Patch missing classes in transformers v5 that Unsloth attempts to import directly
+class DummyHFClass: pass
+
+for cls_name in ["HybridCache", "CompileConfig"]:
+    if not hasattr(transformers, cls_name):
+        try:
+            if cls_name == "HybridCache":
+                from transformers.cache_utils import HybridCache as resolved_cls
+            elif cls_name == "CompileConfig":
+                from transformers.generation.configuration_utils import CompileConfig as resolved_cls
+            setattr(transformers, cls_name, resolved_cls)
+        except ImportError:
+            setattr(transformers, cls_name, DummyHFClass)
+            
+        # Bypass Hugging Face's lazy module loading by registering it in __all__
+        if hasattr(transformers, "__all__") and isinstance(transformers.__all__, list):
+            if cls_name not in transformers.__all__:
+                transformers.__all__.append(cls_name)
 
 # 4. Import Unsloth after builtins are patched
 import warnings
