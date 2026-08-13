@@ -1,6 +1,6 @@
 torch
 transformers>=5.2.0
-trl
+trl<0.12.0
 unsloth
 peft
 bitsandbytes
