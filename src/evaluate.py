@@ -13,19 +13,6 @@ try:
 except ImportError:
     PYNVML_AVAILABLE = False
 
-class TimingLogitsProcessor(LogitsProcessor):
-    def __init__(self):
-        self.start_time = time.time()
-        self.first_token_time = None
-        self.token_times = []
-
-    def __call__(self, input_ids, scores):
-        current_time = time.time()
-        if self.first_token_time is None:
-            self.first_token_time = current_time
-        self.token_times.append(current_time)
-        return scores
-
 class GPUPerfMonitor:
     def __init__(self):
         self.stop_event = Event()
@@ -49,7 +36,7 @@ class GPUPerfMonitor:
                     self.powers.append(power)
                 except Exception:
                     pass
-            time.sleep(0.01)
+            time.sleep(0.5)
 
     def start(self):
         if PYNVML_AVAILABLE and hasattr(self, 'handle'):
@@ -116,8 +103,6 @@ def run_inference(model, tokenizer, user_content: list, return_perf: bool = Fals
         padding=True, return_tensors="pt"
     ).to(model.device)
 
-    timing_processor = TimingLogitsProcessor()
-    logits_processor = LogitsProcessorList([timing_processor])
     gpu_monitor = GPUPerfMonitor()
 
     if torch.cuda.is_available():
@@ -125,6 +110,7 @@ def run_inference(model, tokenizer, user_content: list, return_perf: bool = Fals
         
     gpu_monitor.start()
 
+    start_time = time.time()
     with torch.inference_mode():
         out_ids = model.generate(
             **inputs,
@@ -132,13 +118,16 @@ def run_inference(model, tokenizer, user_content: list, return_perf: bool = Fals
             do_sample=False,
             eos_token_id=tokenizer.eos_token_id,
             pad_token_id=tokenizer.pad_token_id,
-            logits_processor=logits_processor
         )
+    total_time = time.time() - start_time
         
     avg_gpu_util, avg_power = gpu_monitor.stop()
 
+    generated_ids = out_ids[:, inputs.input_ids.shape[1]:]
+    num_tokens = generated_ids.shape[1] if generated_ids.shape[1] > 0 else 1
+
     raw_out = tokenizer.batch_decode(
-        out_ids[:, inputs.input_ids.shape[1]:],
+        generated_ids,
         skip_special_tokens=True
     )[0]
 
@@ -150,24 +139,13 @@ def run_inference(model, tokenizer, user_content: list, return_perf: bool = Fals
     else:
         peak_vram = 0
 
-    # Calculate timing metrics
-    total_time = time.time() - timing_processor.start_time
-    ttft = 0.0
-    tpot = 0.0
-    prefill_time = 0.0
+    # Approximate timing metrics since we removed the LogitsProcessor for Unsloth compatibility
+    tpot = total_time / num_tokens
     
-    if timing_processor.first_token_time:
-        ttft = timing_processor.first_token_time - timing_processor.start_time
-        prefill_time = ttft # same as ttft
-        
-        num_tokens = len(timing_processor.token_times)
-        if num_tokens > 1:
-            tpot = (timing_processor.token_times[-1] - timing_processor.first_token_time) / (num_tokens - 1)
-
     perf_metrics = {
-        "ttft_sec": ttft,
+        "ttft_sec": 0.0, # Removed to preserve Unsloth speed
         "tpot_sec": tpot,
-        "prefill_time_sec": prefill_time,
+        "prefill_time_sec": 0.0, # Removed to preserve Unsloth speed
         "total_time_sec": total_time,
         "peak_vram_gb": peak_vram,
         "avg_gpu_utilization_pct": avg_gpu_util,
