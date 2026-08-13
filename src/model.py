@@ -1,16 +1,18 @@
 import os
 import json
 import torch
+import builtins
 import transformers
 
-# Patch transformers v5 naming for Unsloth compatibility
-if not hasattr(transformers, "PreTrainedConfig") and hasattr(transformers, "PretrainedConfig"):
-    transformers.PreTrainedConfig = transformers.PretrainedConfig
+# 1. Patch Hugging Face v5 naming into Python builtins for Unsloth's dynamic exec()
+if hasattr(transformers, "PretrainedConfig") and not hasattr(builtins, "PreTrainedConfig"):
+    builtins.PreTrainedConfig = transformers.PretrainedConfig
 
+# 2. Add missing docstring decorator fallback if needed
 if not hasattr(transformers, "auto_docstring"):
     transformers.auto_docstring = lambda *args, **kwargs: (lambda func: func)
 
-# Now safely import Unsloth
+# 3. Import Unsloth after builtins are patched
 from unsloth import FastVisionModel
 from huggingface_hub import snapshot_download
 from safetensors.torch import load_file, save_file
