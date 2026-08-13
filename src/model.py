@@ -8,12 +8,28 @@ import transformers
 if hasattr(transformers, "PretrainedConfig") and not hasattr(builtins, "PreTrainedConfig"):
     builtins.PreTrainedConfig = transformers.PretrainedConfig
 
+# Patch RopeParameters which was introduced in v5 and causes NameError during exec()
+try:
+    from transformers.models.llama.configuration_llama import RopeParameters
+    builtins.RopeParameters = RopeParameters
+except ImportError:
+    pass
+
+try:
+    from transformers.modeling_rope_utils import RopeParameters
+    builtins.RopeParameters = RopeParameters
+except ImportError:
+    pass
+
 # 2. Add missing docstring decorator fallback if needed
 if not hasattr(transformers, "auto_docstring"):
     transformers.auto_docstring = lambda *args, **kwargs: (lambda func: func)
 
 # 3. Import Unsloth after builtins are patched
-from unsloth import FastVisionModel
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from unsloth import FastVisionModel
 from huggingface_hub import snapshot_download
 from safetensors.torch import load_file, save_file
 from .config import MAX_SEQ_LEN
