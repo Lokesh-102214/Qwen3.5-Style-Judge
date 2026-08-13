@@ -1,5 +1,5 @@
 torch
-transformers
+git+https://github.com/huggingface/transformers.git
 trl
 unsloth
 peft

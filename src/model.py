@@ -50,10 +50,14 @@ def load_vision_model(base_model_name: str, adapter_path: str = None, load_in_4b
         print(f"[MODEL] Kaggle Model downloaded to: {base_model_name}")
 
     print(f"[MODEL] Loading Base Model: {base_model_name} …")
+    
+    # Dynamically check for bfloat16 support
+    compute_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    
     model, tokenizer = FastVisionModel.from_pretrained(
         model_name=base_model_name,
         max_seq_length=MAX_SEQ_LEN,
-        dtype=torch.bfloat16,
+        dtype=compute_dtype,
         load_in_4bit=load_in_4bit,
     )
     
