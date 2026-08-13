@@ -25,7 +25,16 @@ except ImportError:
 if not hasattr(transformers, "auto_docstring"):
     transformers.auto_docstring = lambda *args, **kwargs: (lambda func: func)
 
-# 3. Import Unsloth after builtins are patched
+# 3. Patch missing HybridCache import in transformers v5
+if not hasattr(transformers, "HybridCache"):
+    try:
+        from transformers.cache_utils import HybridCache
+        transformers.HybridCache = HybridCache
+    except ImportError:
+        class DummyHybridCache: pass
+        transformers.HybridCache = DummyHybridCache
+
+# 4. Import Unsloth after builtins are patched
 import warnings
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
