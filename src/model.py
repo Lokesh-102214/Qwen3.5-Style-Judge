@@ -1,6 +1,16 @@
 import os
 import json
 import torch
+import transformers
+
+# Patch transformers v5 naming for Unsloth compatibility
+if not hasattr(transformers, "PreTrainedConfig") and hasattr(transformers, "PretrainedConfig"):
+    transformers.PreTrainedConfig = transformers.PretrainedConfig
+
+if not hasattr(transformers, "auto_docstring"):
+    transformers.auto_docstring = lambda *args, **kwargs: (lambda func: func)
+
+# Now safely import Unsloth
 from unsloth import FastVisionModel
 from huggingface_hub import snapshot_download
 from safetensors.torch import load_file, save_file
