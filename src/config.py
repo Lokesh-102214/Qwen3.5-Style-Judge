@@ -2,9 +2,9 @@ STYLE_MARKERS = {
     "abstract":      ("non-representational geometric forms", "bold flat primary color blocks", "elimination of figurative elements"),
     "acrylic":       ("thick impasto surface texture", "sharp-edged opaque brushwork", "high-saturation vivid colors"),
     "charcoal":      ("monochromatic grey tonal gradients", "smudged dusty texture marks", "visible hatching lines"),
-    "cubist":        ("simultaneous multiple-viewpoint planes", "fractured interlocking geometric facets", "muted ochre and brown palette"),
+    "cubist":        ("simultaneous multiple-viewpoint planes", "fractured interlocking geometric facets", "and a muted palette"),
     "expressive":    ("raw emotionally distorted brushwork", "unblended aggressive color strokes", "angular forms"),
-    "gouache":       ("opaque chalky flat color areas", "matte non-reflective finish", "clean sharp color-edge definition"),
+    "gouache":       ("opaque chalky flat color areas", "matte non-reflective finish", "clean sharp color-edges"),
     "impressionist": ("short broken dappled brushstrokes", "chromatic color juxtaposition without blending", "soft atmospheric hazy edges"),
     "minimalist":    ("extreme negative white-space areas", "single dominant restrained color", "reductive simplified forms"),
     "mosaic":        ("discrete tile fragments with visible grout lines", "angular hard-edge color segmentation", "tesserae patterns"),
@@ -40,7 +40,7 @@ Rendering Quality: [integer 1-11]
 </Quantitative_Metrics>
 
 <Final_Output>
-Brief Rationale: [Analytical justification for the scores. Max 1200 words. Do NOT name the style.]
+Brief Rationale: [Analytical justification for the scores. Max 1000 words. Do NOT name the style.]
 </Final_Output>"""
 
 IMAGE_SIZE = 1024
